@@ -8,6 +8,7 @@
 import requests
 from pathlib import Path
 from bs4 import BeautifulSoup
+import random
 
 output_folder = Path("img").mkdir(exist_ok = True) # 重複している場合にエラーが出ないようにする
 url = "https://www.akindo-sushiro.co.jp/menu/" # スシローの公式URL
@@ -62,22 +63,55 @@ def get_sushi_price_calorie():
 
     return price_list, calorie_list
 
-def get_sushi_information(): # 寿司の情報（名称・値段・カロリー）をまとめて返す関数
+# 寿司の情報（名称・値段・カロリー）をまとめて返す関数
+def get_sushi_information():
     name_information = get_sushi_name() # 寿司の名称を取得
     price_information = get_sushi_price_calorie()[0] # 寿司の値段を取得
     calorie_information = get_sushi_price_calorie()[1] # 寿司のカロリーを取得
-    sushi_information = []
+    sushis_information = []
     for number in range(len(name_information)):
-        sushi_information.append([name_information[number], price_information[number], calorie_information[number]])
+        sushis_information.append([name_information[number], price_information[number], calorie_information[number], calorie_information[number] / price_information[number]])
 
-    return sushi_information # 名称・値段（税別）・カロリー
+    return sushis_information # 名称・値段（税別）・カロリー・カロリー / 円
+
+# 食べたい寿司が無い時に自動で決めてくれる関数
+def get_random_menu(money): # 所持金
+    sushi_information = get_sushi_information()
+    sushi_information.sort(key = lambda x: x[1], reverse = True) # 金額の高い順にソート
+    eat_menu = [] # 食べる寿司を格納する配列
+    now_money = 0 # 支払った金額
+
+    while True:
+        menu_number = random.randint(0, len(sushi_information) - 1)
+        if now_money + sushi_information[menu_number][1] <= money:
+            eat_menu.append([sushi_information[menu_number][0], int(sushi_information[menu_number][1])]) # 食べる寿司の名称・金額
+            now_money += sushi_information[menu_number][1]
+        if now_money + 100 > money:
+            break 
+
+    random_sushi_menu = [random_sushi[0] for random_sushi in eat_menu]
+    random_sushi_money = [random_money[1] for random_money in eat_menu]
+
+    print(F"あなたが{money}円以内で食べる寿司メニューは、\n")
+    for number in range(len(random_sushi_menu)):
+        print(F"{random_sushi_menu[number]} / {random_sushi_money[number]}円")
+    print(F"\n合計金額は{sum(random_sushi_money)}円です。")
+
+    return eat_menu
+
 
 
 """
 〜画像の取り込み方〜
-⓵ 取り込みたい階層にターミナルで cd を使って移動します
+① 取り込みたい階層にターミナルで cd を使って移動します
 ② 実行します。終わりです。
 """
 # get_sushi_image() # 寿司の画像が欲しい時に実行
 
-print(*get_sushi_information(),sep="\n")
+"""
+〜ランダムに寿司を選びたい方法〜
+① 取り込みたい階層にターミナルで cd を使って移動します
+② 下の引数に食べたい金額をセットします
+② 実行します。終わりです。
+"""
+# get_random_menu(10000) # 食べたい寿司が決まらない時に実行
