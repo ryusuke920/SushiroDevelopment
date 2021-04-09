@@ -5,10 +5,22 @@
 ・役に立つの？ ... 役に立ちません。趣味です。
 """
 
+# Scraping
 import requests
 from pathlib import Path
 from bs4 import BeautifulSoup
 import random
+
+# LineBot
+from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
+
+
+"""
+以下Scrapingについて
+"""
 
 output_folder = Path("img").mkdir(exist_ok = True) # 重複している場合にエラーが出ないようにする
 url = "https://www.akindo-sushiro.co.jp/menu/" # スシローの公式URL
@@ -100,13 +112,71 @@ def get_random_menu(money): # 所持金
     return eat_menu
 
 
+"""
+以下LineBotについて
+"""
+
+app = Flask(__name__)
+
+line_bot_api = LineBotApi('E/1y4vtfcDs085dCQ8PcZqfojpEKowDwubJ/gCvoP1goPDvQygLR0gMMKc49Zb3JK24S7hPu52QcNkN3Y7rs0HLp/IHP5HDS718Fei4JJSwiIfX8VrFCIE2CZcGUMYoxWLKeDUam4O9yhtXfVqbfTwdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('d36303f285df5be2bab3a652b2672379')
+
+# ngrok動いてるかの確認用
+"""
+@app.route("/")
+def test():
+    return "OK"
+"""
+
+@app.route("/callback", methods=['POST'])
+def callback():
+    # get X-Line-Signature header value
+    signature = request.headers['X-Line-Signature']
+
+    # get request body as text
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
+
+    # handle webhook body
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        print("Invalid signature. Please check your channel access token/channel secret.")
+        abort(400)
+
+    return 'OK'
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+
+    sender_message = event.message.text.split()
+    print(sender_message,"です。")
+
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=f"{sender_message}"))        
+
+# debug確認用
+"""
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=event.message.text))
+"""
+
+if __name__ == "__main__":
+    app.run()
+
+
+
 
 """
 〜画像の取り込み方〜
 ① 取り込みたい階層にターミナルで cd を使って移動します
 ② 実行します。終わりです。
 """
-get_sushi_image() # 寿司の画像が欲しい時に実行
+# get_sushi_image() # 寿司の画像が欲しい時に実行
 
 """
 〜ランダムに寿司を選びたい方法〜
@@ -114,4 +184,4 @@ get_sushi_image() # 寿司の画像が欲しい時に実行
 ② 下の引数に食べたい金額をセットします
 ② 実行します。終わりです。
 """
-# get_random_menu(10000) # 食べたい寿司が決まらない時に実行
+# get_random_menu(2000) # 食べたい寿司が決まらない時に実行
